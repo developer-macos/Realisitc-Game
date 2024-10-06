@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collision Detection with Trees</title>
+  <style> body { margin: 0; overflow: hidden; } </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Scene, Camera, Renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Basic Cube (The Player)
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0x0077ff });
+    const player = new THREE.Mesh(geometry, material);
+    scene.add(player);
+
+    // Light for visibility
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 10, 7);
+    scene.add(light);
+
+    // Position the camera
+    camera.position.z = 10;
+
+    // Variables for movement
+    const moveSpeed = 0.1;
+    let moveForward = false;
+    let moveBackward = false;
+    let moveLeft = false;
+    let moveRight = false;
+
+    // Array to store trees and their bounding boxes
+    const trees = [];
+    const treeBoundingBoxes = [];
+
+    // Add simple trees (cylinder trunks and cone foliage)
+    function createTree(x, z) {
+      // Tree trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 32);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.set(x, 1, z);  // Raise the trunk's position to half its height (1 unit)
+      scene.add(trunk);
+
+      // Tree foliage (cone on top of trunk)
+      const foliageGeometry = new THREE.ConeGeometry(1, 2, 32);
+      const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      foliage.position.set(x, 3, z);  // Position the foliage above the trunk
+      scene.add(foliage);
+
+      // Store tree and its bounding box
+      trees.push(trunk);
+      const treeBoundingBox = new THREE.Box3().setFromObject(trunk);  // Create bounding box from the trunk
+      treeBoundingBoxes.push(treeBoundingBox);
+    }
+
+    // Create a few trees at random positions
+    for (let i = 0; i < 10; i++) {
+      const x = Math.random() * 20 - 10; // Random x position between -10 and 10
+      const z = Math.random() * 20 - 10; // Random z position between -10 and 10
+      createTree(x, z);
+    }
+
+    // Function to update player's bounding box
+    const playerBoundingBox = new THREE.Box3().setFromObject(player);
+
+    // Keyboard input handling
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'w' || event.key === 'ArrowUp') moveForward = true;
+      if (event.key === 's' || event.key === 'ArrowDown') moveBackward = true;
+      if (event.key === 'a' || event.key === 'ArrowLeft') moveLeft = true;
+      if (event.key === 'd' || event.key === 'ArrowRight') moveRight = true;
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (event.key === 'w' || event.key === 'ArrowUp') moveForward = false;
+      if (event.key === 's' || event.key === 'ArrowDown') moveBackward = false;
+      if (event.key === 'a' || event.key === 'ArrowLeft') moveLeft = false;
+      if (event.key === 'd' || event.key === 'ArrowRight') moveRight = false;
+    });
+
+    // Function to check collisions
+    function checkCollisions(newPosition) {
+      // Update player's bounding box based on the new position
+      player.position.copy(newPosition);
+      playerBoundingBox.setFromObject(player);
+
+      // Check if player's bounding box intersects with any tree's bounding box
+      for (let i = 0; i < treeBoundingBoxes.length; i++) {
+        if (playerBoundingBox.intersectsBox(treeBoundingBoxes[i])) {
+          return true; // Collision detected
+        }
+      }
+      return false; // No collision
+    }
+
+    // Game loop to animate the cube and trees
+    const animate = function () {
+      requestAnimationFrame(animate);
+
+      let newPosition = player.position.clone();
+
+      // Update new position based on movement keys
+      if (moveForward) newPosition.z -= moveSpeed;  // Move forward
+      if (moveBackward) newPosition.z += moveSpeed; // Move backward
+      if (moveLeft) newPosition.x -= moveSpeed;     // Move left
+      if (moveRight) newPosition.x += moveSpeed;    // Move right
+
+      // Only update position if there is no collision
+      if (!checkCollisions(newPosition)) {
+        player.position.copy(newPosition);
+      }
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+  </script>
+</body>
+</html>
